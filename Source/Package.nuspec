@@ -3,9 +3,8 @@
   <metadata>
     <id>MSBuild.Scaffolding</id>
     <version>0.2.0</version>
-    <authors>Michael Ayvazyan</authors>
+    <authors>Michael Ayvazyan, Bryan Johns</authors>
     <owners>Michael Ayvazyan</owners>
-	<contributors>Bryan Johns</contributors>
     <projectUrl>https://github.com/k4gdw/MSBuild.Scaffolding#msbuildscaffolding</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Adds basic MSBuild script and required infrastructure to your solution.</description>
