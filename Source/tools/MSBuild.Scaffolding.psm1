@@ -5,17 +5,25 @@ $knownExceptions = @(
 
 <#
 .SYNOPSIS
-	Configures project to use SharedAssemblyInfo.cs.
+	Configures project to use SharedAssemblyInfo.
 
 .DESCRIPTION
-	Adds reference to .\Build\SharedAssemblyInfo.cs and removes version related attributes from the AssemblyInfo.cs.    
+	Adds reference to .\Build\SharedAssemblyInfo.cs/vb and removes version related attributes from the AssemblyInfo.cs/vb.
 
 .PARAMETER ProjectName
     Specifies the project that should be configured. If omitted, all the supported projects will be updated.
 #>
-function IsConfigured($project)
-{	
-	$fileName = "SharedAssemblyInfo.cs"
+
+function ProjectType($project) {
+	if ($project.Type -eq "VB.NET") {
+       return ".vb"
+    } else {
+       return ".cs"
+    }
+}
+
+function IsConfigured($project) {	
+	$fileName = "SharedAssemblyInfo" + ProjectType($project)	
 	
 	foreach($file in $project.ProjectItems) {				
 		if ($file.Name -eq $fileName) {
@@ -24,55 +32,66 @@ function IsConfigured($project)
 	}
 	return $false;
 }
-function ConfigureProject($project)
-{
+
+function ConfigureProject($project) {
 	if (IsConfigured $project) {
 		return
 	}		
 	Write-Host Configure $project.Name
 	
-	# Add SharedAssemblyInfo.cs
+	# Add SharedAssemblyInfo
 	$project.ProjectItems.AddFromFile($sharedAssemblyInfoPath) | Out-Null		
 
 	# Update Assembly Info
 	$projectDirectoryName = [System.IO.Path]::GetDirectoryName($project.FullName)
-	$assemblyInfoPath = Join-Path $projectDirectoryName "Properties\AssemblyInfo.cs"
-
+	$assemblyInfoPath = ""
+	if ($project.Type -eq "VB.NET") {
+		$assemblyInfoPath = Join-Path $projectDirectoryName "My Project\AssemblyInfo.vb"
+	} else {
+		$assemblyInfoPath = Join-Path $projectDirectoryName "Properties\AssemblyInfo.cs"
+	}
 	if ($global:IsTfsInstalled) { 
 	    TfsCheckedOut $assemblyInfoPath
 	}
-
-	(Get-Content $assemblyInfoPath) | Foreach-Object {
+	(Get-Content $assemblyInfoPath) | Foreach-Object {			
+		if ($project.Type -eq "VB.NET") {
+			$_ -replace "\<Assembly\: AssemblyVersion\(", "'<Assembly: AssemblyVersion(" `
+			-replace "\<Assembly\: AssemblyFileVersion\(","'<Assembly: AssemblyFileVersion(" `
+			-replace "\<Assembly\: AssemblyCompany\(","'<Assembly: AssemblyCompany(" `
+			-replace "\<Assembly\: AssemblyCopyright\(","'<Assembly: AssemblyCopyright("`
+			-replace "\<Assembly\: AssemblyTrademark\(","'<Assembly: AssemblyTrademark("
+		} else {
 			$_ -replace '\[assembly\: AssemblyVersion\(', '//[assembly: AssemblyVersion(' `
-				-replace '\[assembly\: AssemblyFileVersion\(','//[assembly: AssemblyFileVersion('
-			} | Out-File -Encoding UTF8 $assemblyInfoPath
+			-replace '\[assembly\: AssemblyFileVersion\(','//[assembly: AssemblyFileVersion(' `
+			-replace '\[assembly\: AssemblyCompany\(','//[assembly: AssemblyCompany(' `
+			-replace '\[assembly\: AssemblyCopyright\(','//[assembly: AssemblyCopyright(' `
+			-replace '\[assembly\: AssemblyTrademark\(','//[assembly: AssemblyTrademark('
+		}
+	} | Out-File -Encoding UTF8 $assemblyInfoPath
 }
 
-function ProcessProject($project, $projectToConfigure)
-{
+function ProcessProject($project, $projectToConfigure) {
 	$kind = $project.Kind.ToString() # http://msdn.microsoft.com/en-us/library/hb23x61k(v=vs.80).aspx
-	if ($kind -eq "{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") # Solution Folder
-	{
-		foreach ($p in $project.ProjectItems) 
-		{
-			if ($p.SubProject)
-			{
+	if ($kind -eq "{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") {
+		# Solution Folder
+		foreach ($p in $project.ProjectItems) {
+			if ($p.SubProject) {
 				ProcessProject $p.SubProject $projectToConfigure
 			}
 		}
-	}
-	else 
-	{	
-		if (!($projectToConfigure -eq "" -or $projectToConfigure -eq $project.Name))
-		{
+	} else {	
+		if (!($projectToConfigure -eq "" -or $projectToConfigure -eq $project.Name))		{
 			return
 		}
-		if ($kind -eq "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") # Visual C#
-		{
+		if ($kind -eq "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") {
+			# Visual C#
 			ConfigureProject $project
 		}
-		else
-		{ 
+		# Visual Basic
+		if ($kind -eq "{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") {
+			# Visual Basic
+			ConfigureProject $project
+		} else { 
 			Write-Host Project Ignored $project.Name - project type isn''t supported
 		}
 	}		
@@ -80,10 +99,8 @@ function ProcessProject($project, $projectToConfigure)
 
 # Thanks to Jason Stangroome http://blog.codeassassin.com/2010/08/11/automatic-tfs-check-out-for-powershell-ise/
 function TfsCheckedOut (
-    [string]
-    $Path,
-    [switch]
-    $Force
+    [string]$Path,
+    [switch]$Force
 ) {
     if (-not $Force -and -not (Get-Item -Path $Path).IsReadOnly) { return }
     $WorkstationType = [Microsoft.TeamFoundation.VersionControl.Client.Workstation]
@@ -95,16 +112,15 @@ function TfsCheckedOut (
     $Workspace.PendEdit($Path) | Out-Null
 }
 
-function Enable-Versioning
-{
+function Enable-Versioning {
 	[CmdletBinding()] 
     param (
         [string] $ProjectName
     )
-	$fileName = "SharedAssemblyInfo.cs"
+	$fileName = "SharedAssemblyInfo" + ProjectType($project)
 	$solution = Get-Interface $dte.Solution ([EnvDTE80.Solution2])
 	$solutionDirectoryName = [System.IO.Path]::GetDirectoryName($solution.FileName)
-	$sharedAssemblyInfoPath = (Join-Path $solutionDirectoryName "Build\SharedAssemblyInfo.cs")
+	$sharedAssemblyInfoPath = (Join-Path $solutionDirectoryName ".build\" + $fileName)
 	
 	foreach($project in $solution.Projects) {		
 		ProcessProject $project $ProjectName

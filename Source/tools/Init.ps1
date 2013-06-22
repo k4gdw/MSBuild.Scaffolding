@@ -11,14 +11,14 @@ function UpdateSolution($solution)
 	$solutionName = [System.IO.Path]::GetFileNameWithoutExtension($solution.FileName)
 	$solutionDirectoryName = [System.IO.Path]::GetDirectoryName($solution.FileName)
 
-	$buildFolder = (Join-Path $solutionDirectoryName "Build")	
+	$buildFolder = (Join-Path $solutionDirectoryName ".build")	
 	if (Test-Path $buildFolder){
 		return $false; # already installed
 	}
 
 	# Create Build solution folder
 	mkdir $buildFolder | Out-Null
-	$buildProject = $solution.AddSolutionFolder("Build")
+	$buildProject = $solution.AddSolutionFolder(".build")
 	$buildItems = Get-Interface $buildProject.ProjectItems ([EnvDTE.ProjectItems])
 		
 	# Add Build script
@@ -30,8 +30,14 @@ function UpdateSolution($solution)
 	# Add some infrastructure
 	AddItem "MSBuild.Community.Tasks.dll" $buildFolder $buildItems
 	AddItem "MSBuild.Community.Tasks.Targets" $buildFolder $buildItems
-	AddItem "SharedAssemblyInfo.cs" $buildFolder $buildItems
-	AddItem "ReadMe.txt" $buildFolder $buildItems
+	
+	if ($project.Type -eq "VB.NET") {
+		AddItem "SharedAssemblyInfo.vb" $buildFolder $buildItems
+	} else {
+		AddItem "SharedAssemblyInfo.cs" $buildFolder $buildItems
+	}
+	
+	AddItem "ReadMe.md" $buildFolder $buildItems
 	
 	return $true;	
 }
