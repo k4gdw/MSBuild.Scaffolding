@@ -23,8 +23,7 @@ function ProjectType($project) {
 }
 
 function IsConfigured($project) {	
-	$fileName = "SharedAssemblyInfo" + ProjectType($project)	
-	
+	$fileName = "SharedAssemblyInfo" + ProjectType $project 
 	foreach($file in $project.ProjectItems) {				
 		if ($file.Name -eq $fileName) {
 			return $true
@@ -117,7 +116,7 @@ function Enable-Versioning {
     param (
         [string] $ProjectName
     )
-	$fileName = "SharedAssemblyInfo" + ProjectType($project)
+	$fileName = "SharedAssemblyInfo" + ProjectType $project
 	$solution = Get-Interface $dte.Solution ([EnvDTE80.Solution2])
 	$solutionDirectoryName = [System.IO.Path]::GetDirectoryName($solution.FileName)
 	$sharedAssemblyInfoPath = (Join-Path $solutionDirectoryName ".build\" + $fileName)
