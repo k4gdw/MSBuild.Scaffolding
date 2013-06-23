@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<buildInfo AssemblyTitle="ABHAS"
+           AssemblyCompany="Alabama Department of Mental Health"
+           AssemblyDescription="Alabama Behavioral Health Assessment System"
+           AssemblyCopyright="Copyright © Alabama Department of Mental Health 2011"
+           AssemblyTrademark="ADMH"
+           AssemblyProduct="ABHAS">
+    <version Major="1"
+             Minor="5"
+             Patch="0"
+             Build="16" />
+</buildInfo>

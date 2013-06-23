@@ -29,16 +29,13 @@ function UpdateSolution($solution)
 
 	# Add some infrastructure
 	AddItem "MSBuild.Community.Tasks.dll" $buildFolder $buildItems
+	AddItem "MSBuild.Community.Tasks.xsd" $buildFolder $buildItems
 	AddItem "MSBuild.Community.Tasks.Targets" $buildFolder $buildItems
-	
-	if ($project.Type -eq "VB.NET") {
-		AddItem "SharedAssemblyInfo.vb" $buildFolder $buildItems
-	} else {
-		AddItem "SharedAssemblyInfo.cs" $buildFolder $buildItems
-	}
-	
+	AddItem "SharedAssemblyInfo.vb" $buildFolder $buildItems
+	AddItem "SharedAssemblyInfo.cs" $buildFolder $buildItems
 	AddItem "ReadMe.md" $buildFolder $buildItems
-	
+	AddItem "_BuildInfo.xml" $buildFolder $buildItems
+
 	return $true;	
 }
 

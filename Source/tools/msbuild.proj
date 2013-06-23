@@ -5,53 +5,94 @@
 
   <!-- Import MSBuild Community Tasks -->
   <PropertyGroup>
-    <MSBuildCommunityTasksPath>$(MSBuildProjectDirectory)\Build</MSBuildCommunityTasksPath>
+    <MSBuildCommunityTasksPath>$(MSBuildProjectDirectory)\.build\</MSBuildCommunityTasksPath>
   </PropertyGroup>
-  <Import Project="$(MSBuildProjectDirectory)\Build\MSBuild.Community.Tasks.targets" />
+  <Import Project="$(MSBuildCommunityTasksPath)MSBuild.Community.Tasks.targets" />
 
   <!-- Define some variables -->
-  <PropertyGroup>
-    <OutDir Condition="'$(OutDir)' == ''">.\BuildArtifacts\</OutDir>
-    <BuildNumber Condition="'$(BuildNumber)' == ''">0</BuildNumber>
-    <RevisionNumber Condition="'$(RevisionNumber)' == ''">0</RevisionNumber>
-    <BuildInParallel Condition="'$(BuildInParallel)' == ''">true</BuildInParallel>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <DeployDirectory Condition="'$(DeployDirectory)' == ''">$(OutDir)_Deploy\</DeployDirectory>
-  </PropertyGroup>
-
-  <!-- Define Production Version-->
-  <PropertyGroup>
-    <Major>1</Major>
-    <Minor>0</Minor>
-    <Build>$(BuildNumber)</Build>
-    <Revision>$(RevisionNumber)</Revision>
-  </PropertyGroup>
+  
+      <PropertyGroup>
+		<SlnLanguage>vb</SlnLanguage>
+        <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+        <BaseDir>$(MSBuildProjectDirectory)\</BaseDir>  
+		<BuildDir>$(BaseDir).build\</BuildDir>
+		<OutDir Condition="'$(OutDir)' == ''">$(BaseDir)code_drop\</OutDir>
+		<DeployDirectory Condition="'$(DeployDirectory)' == ''">$(OutDir)_Deploy\</DeployDirectory>
+        <InfoFile>$(BuildDir)_BuildInfo.xml</InfoFile>
+        <SlnFile>$(BaseDir)YOUR_SOLUTION_NAME.sln</SlnFile>
+        <SharedAssyInfoFile>$(BuildDir)SharedAssemblyInfo.$(SlnLanguage)</SharedAssyInfoFile>
+    </PropertyGroup>
 
   <ItemGroup>
     <BuildArtifacts Include="$(OutDir)" />
-    <SolutionFile Include=".\YOUR_SOLUTION_NAME.sln"/>
+    <SolutionFile Include="$(SlnFile)"/>
   </ItemGroup>
 
   <Target Name="Clean">
     <RemoveDir Directories="@(BuildArtifacts)"/>
+	<DeleteTree Directories="$(SlnDir)**\obj\**;$(SlnDir)**\bin\**" />
   </Target>
 
   <Target Name="UpdateAssemblyInfo">
-    <Attrib Files=".\Build\SharedAssemblyInfo.cs" ReadOnly="false"/>
-    <AssemblyInfo CodeLanguage="CS"
-      OutputFile=".\Build\SharedAssemblyInfo.cs"
-      AssemblyVersion="$(Major).$(Minor).$(Build).$(Revision)"
-      AssemblyFileVersion="$(Major).$(Minor).$(Build).$(Revision)"
-      Condition="$(Revision) != '0' "/>
-    <Message Text="Version: $(Major).$(Minor).$(Build).$(Revision)"/>
-  </Target>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/@AssemblyCompany">
+            <Output TaskParameter="Result" ItemName="AssemblyCompany" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/@AssemblyCopyright">
+            <Output TaskParameter="Result" ItemName="AssemblyCopyright" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/@AssemblyTrademark">
+            <Output TaskParameter="Result" ItemName="AssemblyTrademark" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/@AssemblyProduct">
+            <Output TaskParameter="Result" ItemName="AssemblyProduct" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/version/@Major">
+            <Output TaskParameter="Result" ItemName="Major" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/version/@Minor">
+            <Output TaskParameter="Result" ItemName="Minor" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/version/@Patch">
+            <Output TaskParameter="Result" ItemName="Patch" />
+        </XmlPeek>
+        <XmlPeek XmlInputPath="$(InfoFile)"
+                 Query="//buildInfo/version/@Build">
+            <Output TaskParameter="Result" ItemName="Build" />
+        </XmlPeek>
+        <Message Text="Version: @(Major).@(Minor).@(Patch).@(Build)"/>
+		<AssemblyInfo CodeLanguage="VB"
+					  OutputFile="$(SharedAssyInfoFile)"
+					  AssemblyCompany="@(AssemblyCompany)"
+					  AssemblyCopyright="@(AssemblyCopyright)"
+					  AssemblyTrademark="@(AssemblyTrademark)"
+					  AssemblyVersion="@(Major).@(Minor)"
+					  AssemblyFileVersion="@(Major).@(Minor).@(Patch)"
+					  AssemblyInformationalVersion="@(Major).@(Minor).@(Patch).@(Build)"
+					  Condition=" '@(Build)' != '' And '$(SlnLanguage)' == 'vb' " />
+		<AssemblyInfo CodeLanguage="CS"
+					  OutputFile="$(SharedAssyInfoFile)"
+					  AssemblyCompany="@(AssemblyCompany)"
+					  AssemblyCopyright="@(AssemblyCopyright)"
+					  AssemblyTrademark="@(AssemblyTrademark)"
+					  AssemblyVersion="@(Major).@(Minor)"
+					  AssemblyFileVersion="@(Major).@(Minor).@(Patch)"
+					  AssemblyInformationalVersion="@(Major).@(Minor).@(Patch).@(Build)"
+					  Condition=" '@(Build)' != '' And '$(SlnLanguage)' == 'cs' " />
+    </Target>
 
-  <Target Name="Init" DependsOnTargets="Clean;UpdateAssemblyInfo">
+  <Target Name="BeforeBuild" DependsOnTargets="Clean;UpdateAssemblyInfo">
     <MakeDir Directories="@(BuildArtifacts)"/>
     <MakeDir Directories="$(DeployDirectory)"/>
   </Target>
 
-  <Target Name="Build" DependsOnTargets="Init">
+  <Target Name="Build" DependsOnTargets="BeforeBuild">
     <MSBuild Projects="@(SolutionFile)"
              BuildInParallel="$(BuildInParallel)"
              Targets="Build"
