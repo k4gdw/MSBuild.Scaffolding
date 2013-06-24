@@ -3,7 +3,6 @@
 $knownExceptions = @(
 )
 
-$sharedAssemblyInfoPath = ""
 
 <#
 .SYNOPSIS
@@ -47,10 +46,10 @@ function ConfigureProject($project) {
 	
 	# Add SharedAssemblyInfo
 	$fileExt = FileExt $project
-	if (!($sharedAssemblyInfoPath.EndsWith($fileExt))){
-		$sharedAssemblyInfoPath = $sharedAssemblyInfoPath + $fileExt
+	if (!($global:sharedAssemblyInfoPath.EndsWith($fileExt))){
+		$global:sharedAssemblyInfoPath = $global:sharedAssemblyInfoPath + $fileExt
 	}
-	$project.ProjectItems.AddFromFile($sharedAssemblyInfoPath) | Out-Null		
+	$project.ProjectItems.AddFromFile($global:sharedAssemblyInfoPath) | Out-Null		
 
 	# Update Assembly Info
 	$projectDirectoryName = [System.IO.Path]::GetDirectoryName($project.FullName)
@@ -60,11 +59,12 @@ function ConfigureProject($project) {
 			TfsCheckedOut $assemblyInfoPath
 		}
 		(Get-Content $assemblyInfoPath) | Foreach-Object {			
-			$_ -replace "\<Assembly\: AssemblyVersion\(", "'<Assembly: AssemblyVersion(" `
-				-replace "\<Assembly\: AssemblyFileVersion\(","'<Assembly: AssemblyFileVersion(" `
-				-replace "\<Assembly\: AssemblyCompany\(","'<Assembly: AssemblyCompany(" `
-				-replace "\<Assembly\: AssemblyCopyright\(","'<Assembly: AssemblyCopyright("`
-				-replace "\<Assembly\: AssemblyTrademark\(","'<Assembly: AssemblyTrademark("
+			$_ -replace "\<Assembly\: AssemblyCompany\(","'<Assembly: AssemblyCompany(" `
+			   -replace "\<Assembly\: AssemblyCopyright\(","'<Assembly: AssemblyCopyright(" `
+			   -replace "\<Assembly\: AssemblyTrademark\(","'<Assembly: AssemblyTrademark(" `
+			   -replace "\<Assembly\: AssemblyVersion\(", "'<Assembly: AssemblyVersion(" `
+			   -replace "\<Assembly\: AssemblyFileVersion\(","'<Assembly: AssemblyFileVersion(" `
+			   -replace "\<Assembly\: AssemblyInformationalVersion\(","'<Assembly: AssemblyInformationalVersion("
 		} | Out-File -Encoding UTF8 $assemblyInfoPath
 	}
 	if ($project.Type -eq "C#") {
@@ -73,11 +73,12 @@ function ConfigureProject($project) {
 			TfsCheckedOut $assemblyInfoPath
 		}
 		(Get-Content $assemblyInfoPath) | Foreach-Object {			
-			$_ -replace '\[assembly\: AssemblyVersion\(', '//[assembly: AssemblyVersion(' `
-				-replace '\[assembly\: AssemblyFileVersion\(','//[assembly: AssemblyFileVersion(' `
-				-replace '\[assembly\: AssemblyCompany\(','//[assembly: AssemblyCompany(' `
-				-replace '\[assembly\: AssemblyCopyright\(','//[assembly: AssemblyCopyright(' `
-				-replace '\[assembly\: AssemblyTrademark\(','//[assembly: AssemblyTrademark('
+			$_ -replace '\[assembly\: AssemblyCompany\(','//[assembly: AssemblyCompany(' `
+			   -replace '\[assembly\: AssemblyCopyright\(','//[assembly: AssemblyCopyright(' `
+			   -replace '\[assembly\: AssemblyTrademark\(','//[assembly: AssemblyTrademark(' `
+			   -replace '\[assembly\: AssemblyVersion\(', '//[assembly: AssemblyVersion(' `
+			   -replace '\[assembly\: AssemblyFileVersion\(','//[assembly: AssemblyFileVersion(' `
+			   -replace '\[assembly\: AssemblyInformationalVersion\(','//[assembly: AssemblyInformationalVersion(' 
 		} | Out-File -Encoding UTF8 $assemblyInfoPath
 	}
 }
@@ -100,7 +101,7 @@ function ProcessProject($project, $projectToConfigure) {
 			ConfigureProject $project
 		} else { 
 			# unsupported project type
-			Write-Host Project Ignored $project.Name - project type isn''t supported
+			Write-Host 'Project Ignored $project.Name - project type isn''t supported'
 		}
 	}		
 }
@@ -126,8 +127,8 @@ function Enable-Versioning {
 	$fileName = "SharedAssemblyInfo" + $fileExt
 	$solution = Get-Interface $dte.Solution ([EnvDTE80.Solution2])
 	$solutionDirectoryName = [System.IO.Path]::GetDirectoryName($solution.FileName)
-	$fileName = "/.build/" + $fileName
-	$sharedAssemblyInfoPath = (Join-Path $solutionDirectoryName $fileName)
+	$solutionDirectoryName = $solutionDirectoryName + "/.build"
+	$global:sharedAssemblyInfoPath = (Join-Path $solutionDirectoryName $fileName)
 	
 	foreach($project in $solution.Projects) {
 		if ($ProjectName -eq "") {
@@ -136,6 +137,8 @@ function Enable-Versioning {
 		ProcessProject $project $ProjectName
 	}	
 }
+
+$global:sharedAssemblyInfoPath = ""
 
 $global:IsTfsInstalled = $false
 try {
