@@ -1,8 +1,8 @@
 param($installPath, $toolsPath, $package, $project)
 
-function AddItem($fileName, $buildFolder, $buildItems) {
-	Copy-Item (Join-Path $toolsPath $fileName) $buildFolder | Out-Null
-	$buildItems.AddFromFile((Join-Path $buildFolder $fileName))
+function AddItem($fileName, BuildFolder, BuildItems) {
+	Copy-Item (Join-Path $toolsPath $fileName) BuildFolder | Out-Null
+	BuildItems.AddFromFile((Join-Path BuildFolder $fileName))
 }
 
 function UpdateSolution($solution)
@@ -11,30 +11,30 @@ function UpdateSolution($solution)
 	$solutionName = [System.IO.Path]::GetFileNameWithoutExtension($solution.FileName)
 	$solutionDirectoryName = [System.IO.Path]::GetDirectoryName($solution.FileName)
 
-	$buildFolder = (Join-Path $solutionDirectoryName ".build")	
-	if (Test-Path $buildFolder){
+	BuildFolder = (Join-Path $solutionDirectoryName "Build")	
+	if (Test-Path BuildFolder){
 		return $false; # already installed
 	}
 
 	# Create Build solution folder
-	mkdir $buildFolder | Out-Null
-	$buildProject = $solution.AddSolutionFolder(".build")
-	$buildItems = Get-Interface $buildProject.ProjectItems ([EnvDTE.ProjectItems])
+	mkdir BuildFolder | Out-Null
+	BuildProject = $solution.AddSolutionFolder("Build")
+	BuildItems = Get-Interface BuildProject.ProjectItems ([EnvDTE.ProjectItems])
 		
 	# Add Build script
-	$buildScriptPath = (Join-Path $solutionDirectoryName "$solutionName.proj");
-	$msbuildScript = Get-Content "$toolsPath\msbuild.proj" | Foreach-Object {$_ -replace "YOUR_SOLUTION_NAME", $solutionName}
-	Set-Content -Value $msbuildScript -Path $buildScriptPath
-	$buildItems.AddFromFile($buildScriptPath)
+	BuildScriptPath = (Join-Path $solutionDirectoryName "$solutionName.proj");
+	$mBuildScript = Get-Content "$toolsPath\mBuild.proj" | Foreach-Object {$_ -replace "YOUR_SOLUTION_NAME", $solutionName}
+	Set-Content -Value $mBuildScript -Path BuildScriptPath
+	BuildItems.AddFromFile(BuildScriptPath)
 
 	# Add some infrastructure
-	AddItem "MSBuild.Community.Tasks.dll" $buildFolder $buildItems
-	AddItem "MSBuild.Community.Tasks.xsd" $buildFolder $buildItems
-	AddItem "MSBuild.Community.Tasks.Targets" $buildFolder $buildItems
-	AddItem "SharedAssemblyInfo.vb" $buildFolder $buildItems
-	AddItem "SharedAssemblyInfo.cs" $buildFolder $buildItems
-	AddItem "ReadMe.md" $buildFolder $buildItems
-	AddItem "_BuildInfo.xml" $buildFolder $buildItems
+	AddItem "MSBuild.Community.Tasks.dll" BuildFolder BuildItems
+	AddItem "MSBuild.Community.Tasks.xsd" BuildFolder BuildItems
+	AddItem "MSBuild.Community.Tasks.Targets" BuildFolder BuildItems
+	AddItem "SharedAssemblyInfo.vb" BuildFolder BuildItems
+	AddItem "SharedAssemblyInfo.cs" BuildFolder BuildItems
+	AddItem "ReadMe.md" BuildFolder BuildItems
+	AddItem "_BuildInfo.xml" BuildFolder BuildItems
 
 	return $true;	
 }
